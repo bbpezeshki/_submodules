@@ -132,6 +132,28 @@ SEARCH_TIME_POINTS_TO_RECORD.sort();
 #####################################################################################################################
 #####################################################################################################################
 
+def updateSearchBound(last_searchBoundData, search_line_data):
+    last_searchBoundData["f_last_time"] = float(search_line_data["time"])
+    last_searchBoundData["last_time"] = search_line_data["time"]
+    last_searchBoundData["last_ln_lb"] = search_line_data["log lower bound"]
+    last_searchBoundData["last_log10_lb"] = str(float(search_line_data["log lower bound"])/math.log(10))
+    last_searchBoundData["last_ln_ub"] = search_line_data["log upper bound"]
+    last_searchBoundData["last_log10_ub"] = "" if search_line_data["log upper bound"]=="" else str(float(search_line_data["log upper bound"])/math.log(10))
+
+def recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription):
+    data_summary[searchPointDescription + ": time"] = last_searchBoundData["last_time"]
+    data_summary[searchPointDescription + ": ln lower bound"] = last_searchBoundData["last_ln_lb"]
+    data_summary[searchPointDescription + ": log10 lower bound"] = last_searchBoundData["last_log10_lb"]
+    data_summary[searchPointDescription + ": ln upper bound"] = last_searchBoundData["last_ln_ub"]
+    data_summary[searchPointDescription + ": log10 upper bound"] = last_searchBoundData["last_log10_ub"]
+
+def updateSearchPointWithLastRecorded(data_summary, lastSearchPointDescriptionRecorded, searchPointDescription):
+    data_summary[searchPointDescription + ": time"] = data_summary[lastSearchPointDescriptionRecorded + ": time"]
+    data_summary[searchPointDescription + ": ln lower bound"] = data_summary[lastSearchPointDescriptionRecorded + ": ln lower bound"]
+    data_summary[searchPointDescription + ": log10 lower bound"] = data_summary[lastSearchPointDescriptionRecorded + ": log10 lower bound"]
+    data_summary[searchPointDescription + ": ln upper bound"] = data_summary[lastSearchPointDescriptionRecorded + ": ln upper bound"]
+    data_summary[searchPointDescription + ": log10 upper bound"] = data_summary[lastSearchPointDescriptionRecorded + ": log10 upper bound"]
+
 def summarizeData(experiment_files_by_type_Dict, root=Path("")):
     data_summary = OrderedDict()
     stdout_file_Path = experiment_files_by_type_Dict["stdout"];
@@ -224,9 +246,7 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
             if "Determinism ratio" in data_summary:
                 data_summary["Determinism ratio"] = str( round( (float(data_summary["Determinism ratio"].replace('%',""))/100.0), 2 ) )
             if matchFound == False:
-                break; # reached EOF
-            
-            
+                break; # reached EOF            
             
 
             # PROCESS SEARCH OUTPUT
@@ -235,12 +255,14 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
             newSearchBoundCounter = 0;
             if matchedString == "Starting search":
                 last_searchTimePointKeyStem_recorded = None
-                f_last_time = float('nan')
-                last_time = None
-                last_ln_lb = None
-                last_log10_lb = None
-                last_ln_ub = None
-                last_log10_ub = None
+                last_searchBoundData = {
+                    "f_last_time" : float('nan'),
+                    "last_time" : None,
+                    "last_ln_lb" : None,
+                    "last_log10_lb" : None,
+                    "last_ln_ub" : None,
+                    "last_log10_ub" : None,
+                }
                 while(True):
                     prevLine, extractedLine, matchFound, match, numLinesReadIn = \
                         readLinesUntil(stdout_file, _startswith="[", _contains="Search done", _strip=True, _prevLine=extractedLine)
@@ -252,47 +274,27 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
                     search_line_data, newSearchBound = ALGORITHM_TO_SEARCH_LINE_PARSER_Dict[algorithm](extractedLine)
                     finalSearchLineData = search_line_data
                     if newSearchBound == True and float(search_line_data["log lower bound"]) > float("-inf"):
-                        f_last_time = float(search_line_data["time"])
-                        last_time = search_line_data["time"]
-                        last_ln_lb = search_line_data["log lower bound"]
-                        last_log10_lb = str(float(search_line_data["log lower bound"])/math.log(10))
-                        last_ln_ub = search_line_data["log upper bound"]
-                        last_log10_ub = "" if search_line_data["log upper bound"]=="" else str(float(search_line_data["log upper bound"])/math.log(10))
+                        updateSearchBound(last_searchBoundData, search_line_data)
                         newSearchBoundCounter += 1;
                         if newSearchBoundCounter <= NUM_NEW_SEARCH_BOUNDS_TO_RECORD:
-                            newSearchBoundKeyStem = "new search bound " + str(newSearchBoundCounter) + ": "
-                            data_summary[newSearchBoundKeyStem + "time"] = last_time
-                            data_summary[newSearchBoundKeyStem + "ln lower bound"] = last_ln_lb
-                            data_summary[newSearchBoundKeyStem + "log10 lower bound"] = last_log10_lb
-                            data_summary[newSearchBoundKeyStem + "ln upper bound"] = last_ln_ub
-                            data_summary[newSearchBoundKeyStem + "log10 upper bound"] = last_log10_ub
+                            newSearchBoundKeyStem = "new search bound " + str(newSearchBoundCounter)
+                            recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchBoundKeyStem)
                     timepoint = float(search_line_data["time"])
                     newSearchTimePointsFinalizedIdx = [];
                     for i, timePointToRecord in enumerate(timepointsLeftToRecord):
-                        newSearchTimePointKeyStem = "search timepoint (" + str(timePointToRecord) + " sec): "
+                        newSearchTimePointKeyStem = "search timepoint (" + str(timePointToRecord) + " sec)"
                         if timepoint <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
-                            if last_time != None:
-                                data_summary[newSearchTimePointKeyStem + "time"] = last_time
-                                data_summary[newSearchTimePointKeyStem + "ln lower bound"] = last_ln_lb
-                                data_summary[newSearchTimePointKeyStem + "log10 lower bound"] = last_log10_lb
-                                data_summary[newSearchTimePointKeyStem + "ln upper bound"] = last_ln_ub
-                                data_summary[newSearchTimePointKeyStem + "log10 upper bound"] = last_log10_ub
+                            if last_searchBoundData["last_time"] != None:
+                                recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchTimePointKeyStem)
                                 last_searchTimePointKeyStem_recorded = newSearchTimePointKeyStem
                             break;
                         else:
-                            if f_last_time <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
-                                data_summary[newSearchTimePointKeyStem + "time"] = last_time
-                                data_summary[newSearchTimePointKeyStem + "ln lower bound"] = last_ln_lb
-                                data_summary[newSearchTimePointKeyStem + "log10 lower bound"] = last_log10_lb
-                                data_summary[newSearchTimePointKeyStem + "ln upper bound"] = last_ln_ub
-                                data_summary[newSearchTimePointKeyStem + "log10 upper bound"] = last_log10_ub
+                            if last_searchBoundData["f_last_time"] <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
+                                recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchTimePointKeyStem)
                                 last_searchTimePointKeyStem_recorded = newSearchTimePointKeyStem
                             else:
-                                data_summary[newSearchTimePointKeyStem + "time"] = data_summary[last_searchTimePointKeyStem_recorded + "time"]
-                                data_summary[newSearchTimePointKeyStem + "ln lower bound"] = data_summary[last_searchTimePointKeyStem_recorded + "ln lower bound"]
-                                data_summary[newSearchTimePointKeyStem + "log10 lower bound"] = data_summary[last_searchTimePointKeyStem_recorded + "log10 lower bound"]
-                                data_summary[newSearchTimePointKeyStem + "ln upper bound"] = data_summary[last_searchTimePointKeyStem_recorded + "ln upper bound"]
-                                data_summary[newSearchTimePointKeyStem + "log10 upper bound"] = data_summary[last_searchTimePointKeyStem_recorded + "log10 upper bound"]
+                                if last_searchTimePointKeyStem_recorded != None:
+                                    updateSearchPointWithLastRecorded(data_summary, last_searchTimePointKeyStem_recorded, searchPointDescription=newSearchTimePointKeyStem)
                             newSearchTimePointsFinalizedIdx.append(i)
                     reversed_newSearchTimePointsRecordedIdx = reversed(newSearchTimePointsFinalizedIdx)
                     for idxToDel in reversed_newSearchTimePointsRecordedIdx:
@@ -300,29 +302,13 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
                 
                 if last_searchTimePointKeyStem_recorded != None:
                     for tp in timepointsLeftToRecord:
-                        searchTimePointKeyStem = "search timepoint (" + str(tp) + " sec): "
-                        data_summary[searchTimePointKeyStem + "time"] = data_summary[last_searchTimePointKeyStem_recorded + "time"]
-                        data_summary[searchTimePointKeyStem + "ln lower bound"] = data_summary[last_searchTimePointKeyStem_recorded + "ln lower bound"]
-                        data_summary[searchTimePointKeyStem + "log10 lower bound"] = data_summary[last_searchTimePointKeyStem_recorded + "log10 lower bound"]
-                        data_summary[searchTimePointKeyStem + "ln upper bound"] = data_summary[last_searchTimePointKeyStem_recorded + "ln upper bound"]
-                        data_summary[searchTimePointKeyStem + "log10 upper bound"] = data_summary[last_searchTimePointKeyStem_recorded + "log10 upper bound"]                    
+                        searchTimePointKeyStem = "search timepoint (" + str(tp) + " sec)"
+                        updateSearchPointWithLastRecorded(data_summary, last_searchTimePointKeyStem_recorded, searchPointDescription=searchTimePointKeyStem)                   
                 
-                finalSearchTimePointKeyStem = "final search timepoint: "
+                finalSearchTimePointKeyStem = "final search timepoint"
                 if finalSearchLineData != None:
-                    data_summary[finalSearchTimePointKeyStem + "time"] = finalSearchLineData["time"]
-                    data_summary[finalSearchTimePointKeyStem + "ln lower bound"] = finalSearchLineData["log lower bound"]
-                    data_summary[finalSearchTimePointKeyStem + "log10 lower bound"] = str(float(finalSearchLineData["log lower bound"])/math.log(10))
-                    data_summary[finalSearchTimePointKeyStem + "ln upper bound"] = finalSearchLineData["log upper bound"]
-                    if finalSearchLineData["log upper bound"] != "":
-                        data_summary[finalSearchTimePointKeyStem + "log10 upper bound"] = str(float(finalSearchLineData["log upper bound"])/math.log(10))
-                    else:
-                        data_summary[finalSearchTimePointKeyStem + "log10 upper bound"] = ""
-                else:
-                    data_summary[finalSearchTimePointKeyStem + "time"] = ""
-                    data_summary[finalSearchTimePointKeyStem + "ln lower bound"] = ""
-                    data_summary[finalSearchTimePointKeyStem + "log10 lower bound"] = ""
-                    data_summary[finalSearchTimePointKeyStem + "ln upper bound"] = ""
-                    data_summary[finalSearchTimePointKeyStem + "log10 upper bound"] = ""	
+                    updateSearchBound(last_searchBoundData, finalSearchLineData)
+                    recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=finalSearchTimePointKeyStem)
 
                 if matchFound == False:
                     break; # reached EOF
