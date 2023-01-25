@@ -11,6 +11,16 @@ def initiateInputStream(f):
         fin = p.open('r')
     return fin, needToCloseFile
 
+def initiateOutputStream(f):
+    fout = None;
+    needToCloseFile = False;
+    if isinstance(f, io.TextIOBase):
+        fout = f;
+    else:
+        p = Path(f)
+        fout = p.open('w')
+    return fout, needToCloseFile
+
 def fullTableSizeFromDomains(f, uaiModel):
     ntuples = 1;
     for v in uaiModel["scopes"][f]:
@@ -82,3 +92,28 @@ def readUaiModel(f):
     assert(idx==len(tokens))
 
     return uaiModel
+
+def printUaiModel(f, model):
+
+    fout, needToCloseFile = initiateOutputStream(f)
+
+    # print(,file=fout)
+    print(model["type"],file=fout)
+    print(file=fout)
+
+    print(model["nvars"],file=fout)
+    print(*model["domainSizes"],file=fout)
+    print(file=fout)
+
+    print(model["nfxns"],file=fout)
+    for f in range(model["nfxns"]):
+        print(len(model["scopes"][f]), *model["scopes"][f], file=fout)
+    print(file=fout)
+
+    for f in range(model["nfxns"]):
+        print(len(model["fxntbls"][f]), file=fout)
+        print(*model["fxntbls"][f], file=fout)
+        print(file=fout)
+
+    if needToCloseFile:
+        fout.close()
