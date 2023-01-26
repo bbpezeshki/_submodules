@@ -42,7 +42,7 @@ def readUaiModel(f):
     tokens = []
     for line in fin:
         sline = line.strip()
-        if not line or not line[0].isalnum():
+        if not sline or not sline[0].isalnum():
             continue;
         tokens += sline.split()
     if needToCloseFile:
