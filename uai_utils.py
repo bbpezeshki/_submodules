@@ -27,6 +27,18 @@ def fullTableSizeFromDomains(f, uaiModel):
         ntuples *= uaiModel["domainSizes"][v]
     return ntuples;
 
+def readTokens(f):
+    fin, needToCloseFile = initiateInputStream(f)
+    tokens = []
+    for line in fin:
+        sline = line.strip()
+        if not sline or not sline[0].isalnum():
+            continue;
+        tokens += sline.split()
+    if needToCloseFile:
+        fin.close()
+    return tokens
+
 def readUaiModel(f):
     uaiModel = {
                     "type"          :   None,
@@ -37,22 +49,12 @@ def readUaiModel(f):
                     "fxntbls"       :   None,
                }
 
-    fin, needToCloseFile = initiateInputStream(f)
-
-    tokens = []
-    for line in fin:
-        sline = line.strip()
-        if not sline or not sline[0].isalnum():
-            continue;
-        tokens += sline.split()
-    if needToCloseFile:
-        fin.close()
+    
+    tokens = readTokens(f):
 
     idx = 0
-    
     uaiModel["type"] = tokens[idx]
     idx +=1;
-
     uaiModel["nvars"] = int(tokens[idx])
     idx +=1;
 
@@ -64,7 +66,6 @@ def readUaiModel(f):
 
     uaiModel["nfxns"] = int(tokens[idx])
     idx += 1;
-
     scopes = [None] * uaiModel["nfxns"]
     for f in range(uaiModel["nfxns"]):
         scope = None;
@@ -117,3 +118,40 @@ def printUaiModel(f, model):
 
     if needToCloseFile:
         fout.close()
+
+
+def readEvid(evid_f, uai_f=None):
+    evid = {}
+    validityCheckWrtUaiFilePerformed = False
+
+    evidTokens = readTokens(evid_f)
+    idx = 0
+    evid["nevid"] = int(evidTokens[idx])
+    idx += 1
+    assert(evid["nevid"] >= 0)
+    assert(evid["nevid"]*2 == len(evidTokens)-1)
+    evid["assignments"] = {}
+    for i in range(evid["nevid"]):
+        var = int(evidTokens[idx])
+        idx += 1
+        ass = int(evidTokens[idx])
+        idx += 1
+        assert(var not in  evid["assignments"])
+        evid["assignments"][var] = ass
+    assert(idx = len(evidTokens))
+    
+    if uai_f != None:
+        uaiModel = readUaiModel(uai_f)
+        for v in evid["assignments"]:
+            assert(v in range(uaiModel["nvars"]))
+            assert(evid["assignments"][v] in range uaiModel["domainSizes"][v])
+        validityCheckWrtUaiFilePerformed = True
+
+    return evid, validityCheckWrtUaiFilePerformed
+
+        
+
+    
+    
+    
+
