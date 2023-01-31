@@ -50,7 +50,7 @@ def readUaiModel(f):
                }
 
     
-    tokens = readTokens(f):
+    tokens = readTokens(f)
 
     idx = 0
     uaiModel["type"] = tokens[idx]
@@ -81,7 +81,7 @@ def readUaiModel(f):
     fxntbls = [None] * uaiModel["nfxns"]
     for f in range(uaiModel["nfxns"]):
         ntuples = int(tokens[idx])
-        assert(ntuples==fullTableSizeFromDomains(f,uaiModel))
+        assert(ntuples==fullTableSizeFromDomains(f,uaiModel)), str(f)
         idx += 1
         table = [None]*ntuples
         for t in range(ntuples):
@@ -90,7 +90,7 @@ def readUaiModel(f):
         fxntbls[f] = table
     uaiModel["fxntbls"] = fxntbls
 
-    assert(idx==len(tokens))
+    assert(idx==len(tokens)), str(f)
 
     return uaiModel
 
@@ -120,7 +120,7 @@ def printUaiModel(f, model):
         fout.close()
 
 
-def readEvid(evid_f, uai_f=None):
+def readEvid(evid_f, uai=None):
     evid = {}
     validityCheckedWrtUaiFile = False
 
@@ -128,29 +128,33 @@ def readEvid(evid_f, uai_f=None):
     idx = 0
     evid["nevid"] = int(evidTokens[idx])
     idx += 1
-    assert(evid["nevid"] >= 0)
-    assert(evid["nevid"]*2 == len(evidTokens)-1)
+    assert(evid["nevid"] >= 0), str(evid_f)
+    assert(evid["nevid"]*2 == len(evidTokens)-1), str(evid_f)
     evid["assignments"] = {}
     for i in range(evid["nevid"]):
         var = int(evidTokens[idx])
         idx += 1
         ass = int(evidTokens[idx])
         idx += 1
-        assert(var not in  evid["assignments"])
+        assert(var not in  evid["assignments"]), str(evid_f)
         evid["assignments"][var] = ass
-    assert(idx = len(evidTokens))
+    assert(idx == len(evidTokens)), str(evid_f)
     
-    if uai_f != None:
-        uaiModel = readUaiModel(uai_f)
+    if uai != None:
+        uaiModel = None
+        if isinstance(uai, dict):
+            uaiModel = uai;
+        else:
+            uaiModel = readUaiModel(uai)
         for v in evid["assignments"]:
-            assert(v in range(uaiModel["nvars"]))
-            assert(evid["assignments"][v] in range uaiModel["domainSizes"][v])
+            assert(v in range(uaiModel["nvars"])), str(evid_f)
+            assert(evid["assignments"][v] in range(uaiModel["domainSizes"][v])), str(evid_f)
         validityCheckedWrtUaiFile = True
 
     return evid, validityCheckedWrtUaiFile
 
 
-def readQuery(query_f, uai_f=None):
+def readQuery(query_f, uai=None):
     query = {}
     validityCheckedWrtUaiFile = False
 
@@ -158,20 +162,24 @@ def readQuery(query_f, uai_f=None):
     idx = 0
     query["nquery"] = int(queryTokens[idx])
     idx += 1
-    assert(query["nquery"] >= 0)
-    assert(query["nquery"] == len(queryTokens)-1)
+    assert(query["nquery"] >= 0), str(query_f)
+    assert(query["nquery"] == len(queryTokens)-1), str(query_f)
     query["vars"] = set()
     for i in range(query["nquery"]):
         var = int(queryTokens[idx])
         idx += 1
-        assert(var not in  query["vars"])
+        assert(var not in  query["vars"]), str(query_f)
         query["vars"].add(var)
-    assert(idx = len(queryTokens))
+    assert(idx == len(queryTokens)), str(query_f)
     
-    if uai_f != None:
-        uaiModel = readUaiModel(uai_f)
+    if uai != None:
+        uaiModel = None
+        if isinstance(uai, dict):
+            uaiModel = uai;
+        else:
+            uaiModel = readUaiModel(uai)
         for v in query["vars"]:
-            assert(v in range(uaiModel["nvars"]))
+            assert(v in range(uaiModel["nvars"])), str(query_f)
         validityCheckedWrtUaiFile = True
 
     return query, validityCheckedWrtUaiFile
