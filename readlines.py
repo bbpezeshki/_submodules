@@ -72,7 +72,8 @@ def readLinesUntil(_fin, _startswith=None, _endswith=None, _equals=None, _contai
     prevLine = None
     currLine = _prevLine
     matchFound = False
-    match = None
+    matchType = None
+    matchIdx = None
     maxNumLinesReachedWithoutMatch = False
     for line in fin:
         numLinesReadIn += 1;
@@ -87,7 +88,8 @@ def readLinesUntil(_fin, _startswith=None, _endswith=None, _equals=None, _contai
                 # print(compareLine)
                 if compareLine.startswith(matchKey):
                     matchFound = True
-                    match = ("_startswith", i,)
+                    matchType = "_startswith"
+                    matchIdx = i
                     break;
             if matchFound == True:
                 break
@@ -95,7 +97,8 @@ def readLinesUntil(_fin, _startswith=None, _endswith=None, _equals=None, _contai
             for i, matchKey in enumerate(endswith):
                 if compareLine.endswith(matchKey):
                     matchFound = True
-                    match = ("_endswith", i,)
+                    matchType = "_endswith"
+                    matchIdx = i
                     break;
             if matchFound == True:
                 break
@@ -103,7 +106,8 @@ def readLinesUntil(_fin, _startswith=None, _endswith=None, _equals=None, _contai
             for i, matchKey in enumerate(equals):
                 if compareLine == matchKey:
                     matchFound = True
-                    match = ("_equals", i,)
+                    matchType = "_equals"
+                    matchIdx = i
                     break;
             if matchFound == True:
                 break
@@ -111,7 +115,8 @@ def readLinesUntil(_fin, _startswith=None, _endswith=None, _equals=None, _contai
             for i, matchKey in enumerate(contains):
                 if matchKey in compareLine:
                     matchFound = True
-                    match = ("_contains", i,)
+                    matchType = "_contains"
+                    matchIdx = i
                     break;
             if matchFound == True:
                 break
@@ -134,7 +139,7 @@ def readLinesUntil(_fin, _startswith=None, _endswith=None, _equals=None, _contai
         if prevLine != None:
             prevLine = prevLine.strip()
     
-    return prevLine, currLine, matchFound, match, numLinesReadIn
+    return prevLine, currLine, matchFound, matchType, matchIdx, numLinesReadIn
     # returns
     #   prevLine = the previous line read in from the file prior to finding a line match
     #   currLine = the most recent line read in from the file and that matches the line-matching criteria or is the line corresponding to _maxNumLines (None corresponds to EOF being reached without reaching either condition)
