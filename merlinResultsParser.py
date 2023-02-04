@@ -59,6 +59,15 @@ preprocessingEndLines = [
                             "Solved during initialization",
                         ]
 
+kstarInitLines = [
+                    "BBK* Wild-type log10 K* Value:",
+                    "BBK* Wild-type ln K* Value:",
+                    "BBK* Wild-type log10 Subunit Z Values:",
+                    "Wild-type ln Subunit Z Values:",
+                    "subunitStabilityThresholdAdjustment:",
+                    "m_subunitStabilityThresholds:",
+                 ]
+
 
 
 def get_search_line_tokens(line):
@@ -154,6 +163,40 @@ def updateSearchPointWithLastRecorded(data_summary, lastSearchPointDescriptionRe
     data_summary[searchPointDescription + ": ln upper bound"] = data_summary[lastSearchPointDescriptionRecorded + ": ln upper bound"]
     data_summary[searchPointDescription + ": log10 upper bound"] = data_summary[lastSearchPointDescriptionRecorded + ": log10 upper bound"]
 
+def processSearchLine(algorithm, extractedLine, last_searchBoundData, newSearchBoundCounter, data_summary, timepointsLeftToRecord, last_searchTimePointKeyStem_recorded):
+    search_line_data, newSearchBound = ALGORITHM_TO_SEARCH_LINE_PARSER_Dict[algorithm](extractedLine)
+    finalSearchLineData = search_line_data
+    if newSearchBound == True and float(search_line_data["log lower bound"]) > float("-inf"):
+        updateSearchBound(last_searchBoundData, search_line_data)
+        newSearchBoundCounter += 1;
+        if newSearchBoundCounter <= NUM_NEW_SEARCH_BOUNDS_TO_RECORD:
+            newSearchBoundKeyStem = "new search bound " + str(newSearchBoundCounter)
+            recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchBoundKeyStem)
+    timepoint = float(search_line_data["time"])
+    newSearchTimePointsFinalizedIdx = [];
+    for i, timePointToRecord in enumerate(timepointsLeftToRecord):
+        newSearchTimePointKeyStem = "search timepoint (" + str(timePointToRecord) + " sec)"
+        if timepoint <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
+            if last_searchBoundData["last_time"] != None:
+                recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchTimePointKeyStem)
+                last_searchTimePointKeyStem_recorded = newSearchTimePointKeyStem
+            break;
+        else:
+            if last_searchBoundData["f_last_time"] <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
+                recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchTimePointKeyStem)
+                last_searchTimePointKeyStem_recorded = newSearchTimePointKeyStem
+            else:
+                if last_searchTimePointKeyStem_recorded != None:
+                    updateSearchPointWithLastRecorded(data_summary, last_searchTimePointKeyStem_recorded, searchPointDescription=newSearchTimePointKeyStem)
+            newSearchTimePointsFinalizedIdx.append(i)
+    reversed_newSearchTimePointsRecordedIdx = reversed(newSearchTimePointsFinalizedIdx)
+    for idxToDel in reversed_newSearchTimePointsRecordedIdx:
+        del timepointsLeftToRecord[idxToDel]
+
+    return finalSearchLineData, newSearchBoundCounter, last_searchTimePointKeyStem_recorded
+
+
+
 def summarizeData(experiment_files_by_type_Dict, root=Path("")):
     data_summary = OrderedDict()
     stdout_file_Path = experiment_files_by_type_Dict["stdout"];
@@ -167,21 +210,21 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
         for i in range(1):
             
             # SKIP PROGRAM TITLE AND INFO
-            prevLine, extractedLine, matchFound, match, numLinesReadIn = \
+            prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
                 readLinesUntil(stdout_file, _startswith="--------------------------------", _strip=True, _prevLine=None)
             if matchFound==True:
                 assert(numLinesReadIn==1)
             else:
                 break;
 
-            prevLine, extractedLine, matchFound, match, numLinesReadIn = \
+            prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
                 readLinesUntil(stdout_file, _startswith="--------------------------------", _strip=True, _prevLine=extractedLine)
             if matchFound==False:
                 break;
         
 
             # EXTRACT COMMAND LINE INPUT
-            prevLine, extractedLine, matchFound, match, numLinesReadIn = \
+            prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
                 readLinesUntil(stdout_file, _startswith="", _strip=True, _prevLine=extractedLine, _maxNumLines=1)
             if matchFound==True:
                 assert(numLinesReadIn==1)
@@ -191,7 +234,7 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
 
 
             # EXTRACT PROGRAM ARGUMENT PRINTOUTS
-            prevLine, extractedLine, matchFound, match, numLinesReadIn = \
+            prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
                 readLinesUntil(stdout_file, _startswith="+ i-bound:", _strip=True, _prevLine=extractedLine)
             if matchFound==False:
                 break;
@@ -200,7 +243,7 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
             data_summary["iB"] = iB;
 
             while(matchFound==True):
-                prevLine, extractedLine, matchFound, match, numLinesReadIn = \
+                prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
                     readLinesUntil(stdout_file, _startswith="+", _strip=True, _prevLine=extractedLine, _maxNumLines=1)
                 if matchFound==True:
                     line_tokens = extractedLine.split(":");
@@ -217,12 +260,10 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
             matchedString = None;
             # while(matchedString!="--- Starting search ---" and matchedString!="--------- Solved during initialization ---------"):
             while(True):
-                prevLine, extractedLine, matchFound, match, numLinesReadIn = \
+                prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
                     readLinesUntil(stdout_file, _startswith=lineIdentifiers, _contains=preprocessingEndLines, _strip=True, _prevLine=extractedLine)
                 if matchFound == False:
                     break; # reached EOF
-                matchType = match[0]
-                matchIdx = match[1]
                 if matchType == "_contains":
                     matchedString = preprocessingEndLines[matchIdx]
                     break; # reaached one of the preprocessingEndLines
@@ -250,10 +291,10 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
             
 
             # PROCESS SEARCH OUTPUT
-            finalSearchLineData = None;
-            timepointsLeftToRecord = SEARCH_TIME_POINTS_TO_RECORD.copy()
-            newSearchBoundCounter = 0;
             if matchedString == "Starting search":
+                finalSearchLineData = None;
+                timepointsLeftToRecord = SEARCH_TIME_POINTS_TO_RECORD.copy()
+                newSearchBoundCounter = 0;
                 last_searchTimePointKeyStem_recorded = None
                 last_searchBoundData = {
                     "f_last_time" : float('nan'),
@@ -263,42 +304,41 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
                     "last_ln_ub" : None,
                     "last_log10_ub" : None,
                 }
-                while(True):
-                    prevLine, extractedLine, matchFound, match, numLinesReadIn = \
-                        readLinesUntil(stdout_file, _startswith="[", _contains="Search done", _strip=True, _prevLine=extractedLine)
-                    if matchFound == False:
-                        break; # reached EOF
-                    matchType = match[0]
-                    if matchType == "_contains":
-                        break; # reaached end of search
-                    search_line_data, newSearchBound = ALGORITHM_TO_SEARCH_LINE_PARSER_Dict[algorithm](extractedLine)
-                    finalSearchLineData = search_line_data
-                    if newSearchBound == True and float(search_line_data["log lower bound"]) > float("-inf"):
-                        updateSearchBound(last_searchBoundData, search_line_data)
-                        newSearchBoundCounter += 1;
-                        if newSearchBoundCounter <= NUM_NEW_SEARCH_BOUNDS_TO_RECORD:
-                            newSearchBoundKeyStem = "new search bound " + str(newSearchBoundCounter)
-                            recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchBoundKeyStem)
-                    timepoint = float(search_line_data["time"])
-                    newSearchTimePointsFinalizedIdx = [];
-                    for i, timePointToRecord in enumerate(timepointsLeftToRecord):
-                        newSearchTimePointKeyStem = "search timepoint (" + str(timePointToRecord) + " sec)"
-                        if timepoint <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
-                            if last_searchBoundData["last_time"] != None:
-                                recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchTimePointKeyStem)
-                                last_searchTimePointKeyStem_recorded = newSearchTimePointKeyStem
-                            break;
-                        else:
-                            if last_searchBoundData["f_last_time"] <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
-                                recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchTimePointKeyStem)
-                                last_searchTimePointKeyStem_recorded = newSearchTimePointKeyStem
-                            else:
-                                if last_searchTimePointKeyStem_recorded != None:
-                                    updateSearchPointWithLastRecorded(data_summary, last_searchTimePointKeyStem_recorded, searchPointDescription=newSearchTimePointKeyStem)
-                            newSearchTimePointsFinalizedIdx.append(i)
-                    reversed_newSearchTimePointsRecordedIdx = reversed(newSearchTimePointsFinalizedIdx)
-                    for idxToDel in reversed_newSearchTimePointsRecordedIdx:
-                        del timepointsLeftToRecord[idxToDel]
+
+                lineIdentifiers = kstarInitLines.copy()
+                prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
+                    readLinesUntil(stdout_file, _startswith=lineIdentifiers, _contains=["[", "Search done"], _strip=True, _prevLine=extractedLine)
+                matchedString = None
+                while matchFound:
+                    if matchType == "_startswith":
+                        matchedString = lineIdentifiers[matchIdx]
+                        del lineIdentifiers[matchIdx]
+                        splitLine = extractedLine.split(":")
+                        key = splitLine[0].strip()
+                        val = splitLine[1].strip()
+                        data_summary[key] = val
+                        prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
+                            readLinesUntil(stdout_file, _startswith=lineIdentifiers, _contains=["[", "Search done"], _strip=True, _prevLine=extractedLine)
+                    else: # matchType == "_contains"
+                        if matchIdx==0: # matched with "["
+                            matchedString = "["
+                            finalSearchLineData, newSearchBoundCounter, last_searchTimePointKeyStem_recorded = \
+                                processSearchLine(algorithm, extractedLine, last_searchBoundData, newSearchBoundCounter, data_summary, timepointsLeftToRecord, last_searchTimePointKeyStem_recorded)
+                        else: # matched with "Search done"
+                            matchedString = "Search done"
+                            pass;
+                        break;
+
+                if matchFound and matchedString == "[":
+                    while matchFound:
+                        prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
+                            readLinesUntil(stdout_file, _startswith="[", _contains="Search done", _strip=True, _prevLine=extractedLine)
+                        if matchFound == False:
+                            break; # reached EOF
+                        if matchType == "_contains":
+                            break; # reaached end of search
+                        finalSearchLineData, newSearchBoundCounter, last_searchTimePointKeyStem_recorded = \
+                            processSearchLine(algorithm, extractedLine, last_searchBoundData, newSearchBoundCounter, data_summary, timepointsLeftToRecord, last_searchTimePointKeyStem_recorded)
                 
                 if last_searchTimePointKeyStem_recorded != None:
                     for tp in timepointsLeftToRecord:
@@ -316,7 +356,7 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
             
             # FINAL SUMMARY
             while(matchFound==True):
-                prevLine, extractedLine, matchFound, match, numLinesReadIn = \
+                prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
                     readLinesUntil(stdout_file, _contains=":", _strip=True, _prevLine=extractedLine, _maxNumLines=1)
                 if matchFound==True:
                     line_tokens = extractedLine.split(":");
