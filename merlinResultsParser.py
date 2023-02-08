@@ -200,7 +200,7 @@ def processSearchLine(algorithm, extractedLine, last_searchBoundData, newSearchB
 
 
 
-def summarizeData(experiment_files_by_type_Dict, root=Path("")):
+def summarizeData(experiment_files_by_type_Dict, root=None):
     data_summary = OrderedDict()
     stdout_file_Path = experiment_files_by_type_Dict["stdout"];
     stderr_file_Path = None
@@ -208,7 +208,10 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
         stderr_file_Path = experiment_files_by_type_Dict["stderr"];	
 
     # extract information from stdout
-    data_summary["stdout file path"] = str(stdout_file_Path.relative_to(root));
+    if root != None:
+        data_summary["stdout file path"] = str(stdout_file_Path.relative_to(root));
+    else:
+        data_summary["stdout file path"] = str(stdout_file_Path.absolute())
     with stdout_file_Path.open('r') as stdout_file:
         for i in range(1):
             
