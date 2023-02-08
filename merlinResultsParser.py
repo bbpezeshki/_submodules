@@ -39,6 +39,8 @@ preprocessingLines = OrderedDict([
                             (   "Initial SAT instance"      ,    (' is ',      "Initial CP",                  [],             False)       ),
                             (   "Determinism encoded and"   ,    (' in ',      "Initial CP time",             ["onds.",],          False)       ),
                             (   "final tmin:"               ,    (':',       "t-max SAT",                            [],             True)       ),
+                            (   "Ufo deflation factor:"     ,    (':',       None,                            [],             True)       ),
+                            (   "Underflow threshold that"  ,    (':',       "t-final",                            [],             True)       ),
                             (   "Time to deflate"           ,    (':',       "Heuristic deflation time",    [],             True)       ),
                             (   "New iB"                    ,    (':',       "iB",                          [],             True)       ),
                             (   "Computing"                 ,    ('Computing',"Hueristic init",             [".",],          True)       ),
