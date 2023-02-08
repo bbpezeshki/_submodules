@@ -133,6 +133,7 @@ ALGORITHM_TO_SEARCH_LINE_PARSER_Dict = { "any-ldfs-bounded"		:		parse_any_ldfs_b
                                          "braobb"				:		parse_aobb_search_line,
                                          "rbfaoo"				:		parse_rbfaoo_search_line,
                                          "kstar-aobb"			:		parse_aobb_search_line,
+                                         "ufo-kstar-aobb"	    :		parse_aobb_search_line,
                                          }
 
 NUM_NEW_SEARCH_BOUNDS_TO_RECORD = 5
