@@ -145,19 +145,19 @@ SEARCH_TIME_POINTS_TO_RECORD.sort();
 #####################################################################################################################
 
 def updateSearchBound(last_searchBoundData, search_line_data):
-    last_searchBoundData["f_last_time"] = float(search_line_data["time"])
-    last_searchBoundData["last_time"] = search_line_data["time"]
-    last_searchBoundData["last_ln_lb"] = search_line_data["log lower bound"]
-    last_searchBoundData["last_log10_lb"] = str(float(search_line_data["log lower bound"])/math.log(10))
-    last_searchBoundData["last_ln_ub"] = search_line_data["log upper bound"]
-    last_searchBoundData["last_log10_ub"] = "" if search_line_data["log upper bound"]=="" else str(float(search_line_data["log upper bound"])/math.log(10))
+    last_searchBoundData["f last bound improvement time"] = float(search_line_data["time"])
+    last_searchBoundData["last bound improvement time"] = search_line_data["time"]
+    last_searchBoundData["last bound improvement ln lb"] = search_line_data["log lower bound"]
+    last_searchBoundData["last bound improvement log10 lb"] = str(float(search_line_data["log lower bound"])/math.log(10))
+    last_searchBoundData["last bound improvement ln ub"] = search_line_data["log upper bound"]
+    last_searchBoundData["last bound improvement log10 ub"] = "" if search_line_data["log upper bound"]=="" else str(float(search_line_data["log upper bound"])/math.log(10))
 
 def recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription):
-    data_summary[searchPointDescription + ": time"] = last_searchBoundData["last_time"]
-    data_summary[searchPointDescription + ": ln lower bound"] = last_searchBoundData["last_ln_lb"]
-    data_summary[searchPointDescription + ": log10 lower bound"] = last_searchBoundData["last_log10_lb"]
-    data_summary[searchPointDescription + ": ln upper bound"] = last_searchBoundData["last_ln_ub"]
-    data_summary[searchPointDescription + ": log10 upper bound"] = last_searchBoundData["last_log10_ub"]
+    data_summary[searchPointDescription + ": time"] = last_searchBoundData["last bound improvement time"]
+    data_summary[searchPointDescription + ": ln lower bound"] = last_searchBoundData["last bound improvement ln lb"]
+    data_summary[searchPointDescription + ": log10 lower bound"] = last_searchBoundData["last bound improvement log10 lb"]
+    data_summary[searchPointDescription + ": ln upper bound"] = last_searchBoundData["last bound improvement ln ub"]
+    data_summary[searchPointDescription + ": log10 upper bound"] = last_searchBoundData["last bound improvement log10 ub"]
 
 def updateSearchPointWithLastRecorded(data_summary, lastSearchPointDescriptionRecorded, searchPointDescription):
     data_summary[searchPointDescription + ": time"] = data_summary[lastSearchPointDescriptionRecorded + ": time"]
@@ -180,12 +180,12 @@ def processSearchLine(algorithm, extractedLine, last_searchBoundData, newSearchB
     for i, timePointToRecord in enumerate(timepointsLeftToRecord):
         newSearchTimePointKeyStem = "search timepoint (" + str(timePointToRecord) + " sec)"
         if timepoint <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
-            if last_searchBoundData["last_time"] != None:
+            if last_searchBoundData["last bound improvement time"] != None:
                 recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchTimePointKeyStem)
                 last_searchTimePointKeyStem_recorded = newSearchTimePointKeyStem
             break;
         else:
-            if last_searchBoundData["f_last_time"] <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
+            if last_searchBoundData["f last bound improvement time"] <= (timePointToRecord+min(timePointToRecord*0.05, 0.1)):
                 recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=newSearchTimePointKeyStem)
                 last_searchTimePointKeyStem_recorded = newSearchTimePointKeyStem
             else:
@@ -303,12 +303,12 @@ def summarizeData(experiment_files_by_type_Dict, root=None):
                 newSearchBoundCounter = 0;
                 last_searchTimePointKeyStem_recorded = None
                 last_searchBoundData = {
-                    "f_last_time" : float('nan'),
-                    "last_time" : None,
-                    "last_ln_lb" : None,
-                    "last_log10_lb" : None,
-                    "last_ln_ub" : None,
-                    "last_log10_ub" : None,
+                    "f last bound improvement time" : float('nan'),
+                    "last bound improvement time" : None,
+                    "last bound improvement ln lb" : None,
+                    "last bound improvement log10 lb" : None,
+                    "last bound improvement ln ub" : None,
+                    "last bound improvement log10 ub" : None,
                 }
 
                 lineIdentifiers = kstarInitLines.copy()
@@ -353,8 +353,14 @@ def summarizeData(experiment_files_by_type_Dict, root=None):
                 
                 finalSearchTimePointKeyStem = "final search timepoint"
                 if finalSearchLineData != None:
-                    updateSearchBound(last_searchBoundData, finalSearchLineData)
                     recordSearchPoint(data_summary, last_searchBoundData, searchPointDescription=finalSearchTimePointKeyStem)
+
+                # store last found bound data
+                for kk in last_searchBoundData:
+                    if type(last_searchBoundData[kk])==float:
+                        continue;
+                    if last_searchBoundData[kk] != None:
+                        data_summary[kk] = last_searchBoundData[kk]
 
                 if matchFound == False:
                     break; # reached EOF
@@ -377,6 +383,17 @@ def summarizeData(experiment_files_by_type_Dict, root=None):
                         data_summary["Solution (log10)"] = str(float(ln_solution)/math.log(10));
                     else:
                         data_summary[key] = value;
+
+            # APPENDED INFORMATION
+            while(numLinesReadIn > 0):
+                prevLine, extractedLine, matchFound, matchType, matchIdx, numLinesReadIn = \
+                    readLinesUntil(stdout_file, _contains=":", _strip=True, _prevLine=extractedLine, _maxNumLines=1)
+                if matchFound==True:
+                    line_tokens = extractedLine.split(":");
+                    key = line_tokens[0].strip()
+                    value = line_tokens[1].strip();
+                    data_summary[key] = value;
+    
 
     # extract information from stderr
     if stderr_file_Path:
