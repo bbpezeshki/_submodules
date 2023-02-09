@@ -6,7 +6,8 @@
 #   prevLine = the previous line read in from the file prior to finding a line match
 #   currLine = the most recent line read in from the file and that matches the line-matching criteria or is the line corresponding to _maxNumLines (None corresponds to EOF being reached without reaching either condition)
 #   matchFound = currLine matches one of the matching criteria (excluding _maxNumLines)
-#   match = pair: ( <string> match_type, <int> match_key_idx )
+#   matchType = <string> match_type (ex: "_startswith", "_endswith", "_equals", "_contains")
+#   matchIdx = <int> match_key_idx into list of match strings provided as an arument to the match-type parameter
 #   numLinesReadIn = the number of lines read in (0 = file was already at EOF)
 
 # params
