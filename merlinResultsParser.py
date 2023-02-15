@@ -362,6 +362,10 @@ def summarizeData(experiment_files_by_type_Dict, root=None):
                     if last_searchBoundData[kk] != None:
                         data_summary[kk] = last_searchBoundData[kk]
 
+                if "last bound improvement time" in data_summary:
+                    f_anytime = float(data_summary["last bound improvement time"]) + float(data_summary["Preprocessing time"])
+                    data_summary["Anytime"] = str(f_anytime)
+
                 if matchFound == False:
                     break; # reached EOF
 
