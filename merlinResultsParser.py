@@ -363,7 +363,7 @@ def summarizeData(experiment_files_by_type_Dict, root=None):
                         data_summary[kk] = last_searchBoundData[kk]
 
                 if "last bound improvement time" in data_summary:
-                    f_anytime = float(data_summary["last bound improvement time"]) + float(data_summary["Preprocessing time"])
+                    f_anytime = float(data_summary["last bound improvement time"].replace("seconds","").strip()) + float(data_summary["Preprocessing time"].replace("seconds","").strip())
                     data_summary["Anytime"] = str(f_anytime)
 
                 if matchFound == False:
