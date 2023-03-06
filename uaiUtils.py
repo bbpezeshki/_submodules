@@ -1,6 +1,10 @@
 import io
 from pathlib import Path
 
+def uaiFileTypes():
+    res = set(['.uai','.evid','.query','.sum','.elim', '.ord','.map'])
+    return res
+
 def initiateInputStream(f):
     fin = None;
     needToCloseFile = False;
@@ -121,7 +125,10 @@ def printUaiModel(f, model):
 
 
 def readEvid(evid_f, uai=None):
-    evid = {}
+    evid = {
+        "nevid"         :   None,
+        "assignments"   :   None, # dict
+    }
     validityCheckedWrtUaiFile = False
 
     evidTokens = readTokens(evid_f)
@@ -155,7 +162,10 @@ def readEvid(evid_f, uai=None):
 
 
 def readQuery(query_f, uai=None):
-    query = {}
+    query = {
+        "nquery"    :   None,
+        "vars"    :   None,
+    }
     validityCheckedWrtUaiFile = False
 
     queryTokens = readTokens(query_f)
@@ -184,7 +194,129 @@ def readQuery(query_f, uai=None):
 
     return query, validityCheckedWrtUaiFile
 
-        
+def toDictMPEStyleAssignments(tokens):
+    asst = {
+        "nassignments"  :   None,
+        "assignments"   :   None, # dict
+    }
+    idx = 0
+    asst["nassignments"] = int(tokens[idx])
+    idx += 1
+    asst["assignments"] = {}
+    var = -1;
+    numInvalidAss = 0;
+    for i in range(ass["nassignments"]):
+        var += 1
+        ass = int(tokens[idx])
+        idx += 1
+        if ass == -1:
+            numInvalidAss +=1
+            continue;
+        assert(var not in  ass["assignments"]), str(f)
+        asst["assignments"][var] = ass
+    assert(idx == len(tokens)), str(f)
+    assert(var+1 == asst["nassignments"])
+    asst["nassignments"] -= numInvalidAss
+    return ass;
+
+def toDictMMAPStyleAssignments(tokens):
+    asst = {
+        "nassignments"  :   None,
+        "assignments"   :   None, # dict
+    }
+    idx = 0
+    asst["nassignments"] = int(tokens[idx])
+    idx += 1
+    asst["assignments"] = {}
+    numInvalidAss = 0
+    for i in range(asst["nassignments"]):
+        var = int(tokens[idx])
+        idx += 1
+        ass = int(tokens[idx])
+        idx += 1
+        if ass == -1:
+            numInvalidAss +=1
+            continue;
+        assert(var not in  asst["assignments"]), str(f)
+        asst["assignments"][var] = ass
+    assert(idx == len(tokens)), str(f)
+    asst["nassignments"] -= numInvalidAss
+    return asst
+
+def readAssignments(f):
+    # assumes on a single line
+    
+    asses = {
+        "nsets"     :   0,
+        "sets"      :   [], 
+    }
+    
+    fin, needToCloseFile = initiateInputStream(f)
+    for line in fin:
+        tokens = []
+        sline = line.strip()
+        if not sline or not sline[0].isalnum():
+            continue;
+        tokens += sline.split()
+        try:
+            n = int(tokens[0])
+        except:
+            continue;
+        ass = {}
+        if len(tokens[1:])==n:
+            # MPE full assignment
+            asses["sets"].append(toDictMPEStyleAssignments(tokens))
+            asses["nsets"] += 1
+        elif len(tokens[1:])==n*2:
+            # MMAP or ass assignment
+            asses["sets"].append(toDictMMAPStyleAssignments(tokens))
+            asses["nsets"] += 1
+        else:
+            #invalid solution line
+            continue; 
+    if needToCloseFile:
+        fin.close()
+
+    return asses
+
+def extractLastAssignmentsDict(data):
+    lastAssDict = None
+    if isinstance(data, dict):
+        if "assignments" in data:
+            lastAssDict = {int(k):int(v) for k,v in data["assignments"].items()}
+        elif "sets" in data:
+            lastAssDict = {int(k):int(v) for k,v in data["sets"][-1]["assignments"].items()}
+        else:
+            lastAssDict = {int(k):int(v) for k,v in data.items()}
+    else: # extract from file
+        asses = readAssignments(data)
+        lastAssDict = asses["sets"][-1]["assignments"]
+    return lastAssDict
+
+def compareLastAssignments(in1,in2):
+    a1 = extractLastAssignmentsDict(in1)
+    a2 = extractLastAssignmentsDict(in2)
+
+    matchingAssignments = {}
+    mismatchingAssignments = {}
+    assignmentsMissingIn1 = set()
+    assignmentsMissingIn2 = set()
+    for var in a1:
+        if var in a2:
+            if a1[var] == a2[var]:
+                matchingAssignments[var] = a1[var]
+            else:
+                mismatchingAssignments[var] = (a1[var],a2[var],)
+        else:
+            assignmentsMissingIn2.add(var)
+    for var in a2:
+        if var not in a1:
+            assignmentsMissingIn1.add(var)
+    return matchingAssignments, mismatchingAssignments, assignmentsMissingIn1, assignmentsMissingIn2
+
+
+
+    
 
     
     
