@@ -315,6 +315,50 @@ def compareLastAssignments(in1,in2):
     return matchingAssignments, mismatchingAssignments, assignmentsMissingIn1, assignmentsMissingIn2
 
 
+def truncateMAPtoMMAP(map_output_file, mmap_query_file, new_truncated_map_file):
+    map_output_file = Path(map_output_file).absolute();
+    mmap_query_file = Path(mmap_query_file).absolute();
+    new_truncated_map_file = Path(new_truncated_map_file).absolute();
+
+    n_map_vars = None
+    map_vars = None
+    map_assignments = None
+    tokens = None
+    with map_output_file.open('r') as fin:
+        tokens = []
+        for line in fin:
+            line = line.strip()
+            if line == "" or line=="-BEGIN-":
+                continue;
+            tokens += line.split()
+    n_map_vars = int(tokens[0])
+    map_vars = [int(x) for x in tokens[1::2]]
+    map_assignments = [int(x) for x in tokens[2::2]]
+    assert(len(map_vars) == len(map_assignments) == n_map_vars)
+    map_assignment_tuples = dict(zip(map_vars,map_assignments))
+
+
+    n_mmap_query_vars = None
+    mmap_query_vars = None
+    tokens = None
+    with mmap_query_file.open('r') as fin:
+        tokens = []
+        for line in fin:
+            line = line.strip()
+            if line == "":
+                continue;
+            tokens += line.split()
+    n_mmap_query_vars = int(tokens[0])
+    mmap_query_vars = [int(x) for x in tokens[1:]]
+    assert(len(mmap_query_vars) == n_mmap_query_vars)
+    assert(n_mmap_query_vars <= n_map_vars)
+
+
+    with new_truncated_map_file.open('w') as fout:
+        print(n_mmap_query_vars, end=" ", file=fout)
+        for i in mmap_query_vars:
+            print(i, map_assignment_tuples[i], sep=" ", end=" ", file=fout)
+        print(file=fout)
 
     
 
