@@ -17,6 +17,7 @@ preprocessingLines = OrderedDict([
                             (   "Number of tuples:"         ,    (':',       None,                            [],             True)       ),
                             (   "Number of zero tuples:"    ,    (':',       None,                            [],             True)       ),
                             (   "Determinism ratio:"        ,    (':',       None,                            [],             True)       ),
+                            (   "Number of constraints:"    ,    (':',       None,                            [],             True)       ),
                             (   "Created problem with"      ,    ('with',    "Problem before evidence",     [".",],         True)       ),
                             (   "Removed evidence, now"     ,    ('now',     "Problem after evidence",      [".",],         True)       ),
                             (   "Global constant:"          ,    (':',       None,                            [],             True)       ),
@@ -134,6 +135,7 @@ ALGORITHM_TO_SEARCH_LINE_PARSER_Dict = { "any-ldfs-bounded"		:		parse_any_ldfs_b
                                          "rbfaoo"				:		parse_rbfaoo_search_line,
                                          "kstar-aobb"			:		parse_aobb_search_line,
                                          "ufo-kstar-aobb"	    :		parse_aobb_search_line,
+                                         "ufo-kstar-aobb-og"	:		parse_aobb_search_line,
                                          }
 
 NUM_NEW_SEARCH_BOUNDS_TO_RECORD = 5
@@ -201,6 +203,8 @@ def processSearchLine(algorithm, extractedLine, last_searchBoundData, newSearchB
 
 
 def summarizeData(experiment_files_by_type_Dict, root=None):
+    if "stdout" not in experiment_files_by_type_Dict:
+        return None;
     data_summary = OrderedDict()
     stdout_file_Path = experiment_files_by_type_Dict["stdout"];
     stderr_file_Path = None
@@ -288,7 +292,7 @@ def summarizeData(experiment_files_by_type_Dict, root=None):
                 if deleteLineIdentifier == True:
                     del lineIdentifiers[matchIdx]
             if "Hueristic init" in data_summary and "i=" in data_summary["Hueristic init"]:
-                finaliB = data_summary["Hueristic init"].split('=')[1].split(')')[0]
+                finaliB = data_summary["Hueristic init"].split('=')[1].split(',')[0].split(')')[0]
                 data_summary["iB"] = finaliB
             if "Determinism ratio" in data_summary:
                 data_summary["Determinism ratio"] = str( round( (float(data_summary["Determinism ratio"].replace('%',""))/100.0), 2 ) )
@@ -328,8 +332,32 @@ def summarizeData(experiment_files_by_type_Dict, root=None):
                     else: # matchType == "_contains"
                         if matchIdx==0: # matched with "["
                             matchedString = "["
-                            finalSearchLineData, newSearchBoundCounter, last_searchTimePointKeyStem_recorded = \
+                            try:
+                                temp_algorithm = algorithm;
+                                temp_extractedLine = extractedLine;
+                                temp_last_searchBoundData = last_searchBoundData;
+                                temp_newSearchBoundCounter = newSearchBoundCounter;
+                                temp_data_summary = data_summary;
+                                temp_timepointsLeftToRecord = timepointsLeftToRecord;
+                                temp_last_searchTimePointKeyStem_recorded = last_searchTimePointKeyStem_recorded;
+
+                                finalSearchLineData, newSearchBoundCounter, last_searchTimePointKeyStem_recorded = \
                                 processSearchLine(algorithm, extractedLine, last_searchBoundData, newSearchBoundCounter, data_summary, timepointsLeftToRecord, last_searchTimePointKeyStem_recorded)
+                            except IndexError:
+                                print()
+                                print()
+                                print(">>>> IndexError Processing search line!")
+                                print("stdout_file_Path, [newline], extractedLine")
+                                print(stdout_file_Path, "\n", extractedLine)
+                                print()
+                                print()
+                                algorithm = temp_algorithm;
+                                extractedLine = temp_extractedLine;
+                                last_searchBoundData = temp_last_searchBoundData;
+                                newSearchBoundCounter = temp_newSearchBoundCounter;
+                                data_summary = temp_data_summary;
+                                timepointsLeftToRecord = temp_timepointsLeftToRecord;
+                                last_searchTimePointKeyStem_recorded = temp_last_searchTimePointKeyStem_recorded;   
                         else: # matched with "Search done"
                             matchedString = "Search done"
                             pass;
@@ -343,9 +371,32 @@ def summarizeData(experiment_files_by_type_Dict, root=None):
                             break; # reached EOF
                         if matchType == "_contains":
                             break; # reaached end of search
-                        finalSearchLineData, newSearchBoundCounter, last_searchTimePointKeyStem_recorded = \
+                        try:
+                            temp_algorithm = algorithm;
+                            temp_extractedLine = extractedLine;
+                            temp_last_searchBoundData = last_searchBoundData;
+                            temp_newSearchBoundCounter = newSearchBoundCounter;
+                            temp_data_summary = data_summary;
+                            temp_timepointsLeftToRecord = timepointsLeftToRecord;
+                            temp_last_searchTimePointKeyStem_recorded = last_searchTimePointKeyStem_recorded;
+
+                            finalSearchLineData, newSearchBoundCounter, last_searchTimePointKeyStem_recorded = \
                             processSearchLine(algorithm, extractedLine, last_searchBoundData, newSearchBoundCounter, data_summary, timepointsLeftToRecord, last_searchTimePointKeyStem_recorded)
-                
+                        except IndexError:
+                            print()
+                            print()
+                            print(">>>> IndexError Processing search line!")
+                            print("stdout_file_Path, [newline], extractedLine")
+                            print(stdout_file_Path, "\n", extractedLine)
+                            print()
+                            print()
+                            algorithm = temp_algorithm;
+                            extractedLine = temp_extractedLine;
+                            last_searchBoundData = temp_last_searchBoundData;
+                            newSearchBoundCounter = temp_newSearchBoundCounter;
+                            data_summary = temp_data_summary;
+                            timepointsLeftToRecord = temp_timepointsLeftToRecord;
+                            last_searchTimePointKeyStem_recorded = temp_last_searchTimePointKeyStem_recorded;          
                 if last_searchTimePointKeyStem_recorded != None:
                     for tp in timepointsLeftToRecord:
                         searchTimePointKeyStem = "search timepoint (" + str(tp) + " sec)"

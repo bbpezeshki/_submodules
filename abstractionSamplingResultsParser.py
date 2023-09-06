@@ -68,9 +68,13 @@ def get_number_of_nodes_in_final_sampling_tree_from_final_sample_line_tokens(fin
 
 
 def summarizeData(experiment_files_by_type_Dict, root=Path("")):
+	if "output" not in experiment_files_by_type_Dict:
+		return None;
 	data_summary = OrderedDict()
 	output_file_Path = experiment_files_by_type_Dict["output"];
-	stderr_file_Path = experiment_files_by_type_Dict["stderr"];
+	stderr_file_Path = None
+	if "stderr" in experiment_files_by_type_Dict:
+		stderr_file_Path = experiment_files_by_type_Dict["stderr"];
 
 	# extract information from stdout
 	data_summary["output file path"] = str(output_file_Path.relative_to(root));
@@ -128,9 +132,11 @@ def summarizeData(experiment_files_by_type_Dict, root=Path("")):
 
 
 	# extract information from stderr
-	data_summary["stderr file path"] = str(stderr_file_Path.relative_to(root));
-	with stderr_file_Path.open('r') as stderr_file:
-		for i, line in enumerate(stderr_file):
-			data_summary["error line " + str(i)] = line.strip();
+	if stderr_file_Path != None:
+		data_summary["stderr file path"] = str(stderr_file_Path.relative_to(root));
+		with stderr_file_Path.open('r') as stderr_file:
+			for i, line in enumerate(stderr_file):
+				data_summary["error line " + str(i)] = line.strip();
+
 
 	return data_summary;

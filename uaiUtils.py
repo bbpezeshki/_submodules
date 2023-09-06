@@ -98,6 +98,27 @@ def readUaiModel(f):
 
     return uaiModel
 
+
+def removeConstantFxn(model, onlyIfOne=True):
+    constantFxnIdx = None;
+    for i, scope in enumerate(model["scopes"]):
+        if len(scope) == 0:
+            assert(constantFxnIdx == None)
+            constantFxnIdx = i;
+
+    constantFxnFound = (constantFxnIdx != None)
+    
+    if constantFxnFound:
+        assert(len(model["fxntbls"][constantFxnIdx]) == 1)
+        if onlyIfOne == True:
+            assert(model["fxntbls"][constantFxnIdx][0] == 1)
+        model["nfxns"] -= 1;
+        del model["scopes"][i];
+        del model["fxntbls"][i];
+    
+    return constantFxnFound
+
+
 def printUaiModel(f, model):
 
     fout, needToCloseFile = initiateOutputStream(f)
