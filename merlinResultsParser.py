@@ -202,7 +202,7 @@ def processSearchLine(algorithm, extractedLine, last_searchBoundData, newSearchB
 
 
 
-def summarizeData(experiment_files_by_type_Dict, root=None):
+def summarizeData(experiment_files_by_type_Dict, options=None, root=None):
     if "stdout" not in experiment_files_by_type_Dict:
         return None;
     data_summary = OrderedDict()
