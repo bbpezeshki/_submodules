@@ -43,7 +43,7 @@ def readTokens(f):
         fin.close()
     return tokens
 
-def readUaiModel(f):
+def readUaiModel(uai_f):
     uaiModel = {
                     "type"          :   None,
                     "nvars"         :   None,
@@ -54,7 +54,7 @@ def readUaiModel(f):
                }
 
     
-    tokens = readTokens(f)
+    tokens = readTokens(uai_f)
 
     idx = 0
     uaiModel["type"] = tokens[idx]
@@ -145,12 +145,44 @@ def printUaiModel(f, model):
         fout.close()
 
 
+def readElim(elim_f, uai=None):
+    elim = {
+                    "nvars"         :   None,
+                    "vars"          :   None,
+               }
+
+    elimTokens = readTokens(elim_f)
+    idx = 0
+    elim["nvars"] = int(elimTokens[idx])
+    idx += 1
+    assert(elim["nvars"] >= 0), str(elim_f)
+    assert(elim["nvars"] == len(elimTokens)-1), str(elim_f)
+    elim["vars"] = set()
+    for i in range(elim["nvars"]):
+        var = int(elimTokens[idx])
+        idx += 1
+        assert(var not in  elim["vars"]), str(elim_f)
+        elim["vars"].add(var)
+    assert(idx == len(elimTokens)), str(elim_f)
+    
+    if uai != None:
+        uaiModel = None
+        if isinstance(uai, dict):
+            uaiModel = uai;
+        else:
+            uaiModel = readUaiModel(uai)
+        uaiVars = set(range(uaiModel["nvars"]))
+        for v in elim["vars"]:
+            assert(v in uaiVars), str(elim_f)
+
+    return elim
+
+
 def readEvid(evid_f, uai=None):
     evid = {
         "nevid"         :   None,
         "assignments"   :   None, # dict
     }
-    validityCheckedWrtUaiFile = False
 
     evidTokens = readTokens(evid_f)
     idx = 0
@@ -174,12 +206,12 @@ def readEvid(evid_f, uai=None):
             uaiModel = uai;
         else:
             uaiModel = readUaiModel(uai)
+        uaiVars = set(range(uaiModel["nvars"]))
         for v in evid["assignments"]:
-            assert(v in range(uaiModel["nvars"])), str(evid_f)
+            assert(v in uaiVars), str(evid_f)
             assert(evid["assignments"][v] in range(uaiModel["domainSizes"][v])), str(evid_f)
-        validityCheckedWrtUaiFile = True
 
-    return evid, validityCheckedWrtUaiFile
+    return evid
 
 
 def readQuery(query_f, uai=None):
@@ -187,7 +219,6 @@ def readQuery(query_f, uai=None):
         "nquery"    :   None,
         "vars"    :   None,
     }
-    validityCheckedWrtUaiFile = False
 
     queryTokens = readTokens(query_f)
     idx = 0
@@ -209,11 +240,11 @@ def readQuery(query_f, uai=None):
             uaiModel = uai;
         else:
             uaiModel = readUaiModel(uai)
+        uaiVars = set(range(uaiModel["nvars"]))
         for v in query["vars"]:
-            assert(v in range(uaiModel["nvars"])), str(query_f)
-        validityCheckedWrtUaiFile = True
+            assert(v in uaiVars), str(query_f)
 
-    return query, validityCheckedWrtUaiFile
+    return query
 
 def toDictMPEStyleAssignments(tokens):
     asst = {
