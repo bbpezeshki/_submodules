@@ -1,5 +1,3 @@
-
-
 # reads a file line by line, stopping upon finding a given string match to the line
 
 # returns
@@ -17,6 +15,15 @@
 #   _contains:   list of substring to find match with within line
 #   _strip:      when looking for line matches, compare to the stripped line?
 #   _prevLine:   the last known line read in from the file
+
+PREV_LINE           = 0
+CURR_LINE           = 1
+EXTRACTED_LINE      = 1
+MATCH_FOUND         = 2
+MATCH_TYPE          = 3
+MATCH_IDX           = 4
+NUM_LINES_READ_IN   = 5
+
 def readLinesUntil(_fin, _startswith=None, _endswith=None, _equals=None, _contains=None, _maxNumLines=None, _strip=False, _returnstripped=None,_prevLine=None):
     fin = _fin
 
@@ -141,9 +148,3 @@ def readLinesUntil(_fin, _startswith=None, _endswith=None, _equals=None, _contai
             prevLine = prevLine.strip()
     
     return prevLine, currLine, matchFound, matchType, matchIdx, numLinesReadIn
-    # returns
-    #   prevLine = the previous line read in from the file prior to finding a line match
-    #   currLine = the most recent line read in from the file and that matches the line-matching criteria or is the line corresponding to _maxNumLines (None corresponds to EOF being reached without reaching either condition)
-    #   matchFound = currLine matches one of the matching criteria (excluding _maxNumLines)
-    #   match = pair: ( <string> match_type, <int> match_key_idx )
-    #   numLinesReadIn = the number of lines read in (0 = file was already at EOF)
