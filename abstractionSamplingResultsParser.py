@@ -2,16 +2,18 @@ from pathlib import Path
 from collections import OrderedDict
 from collections import defaultdict
 import referenceZValuesLoader
+from readlines import *
 import math
+import numpy as np
 
 
-def readlines_until(file, prefix=""):
-	final_line = None;
-	for line in file:
-		if line.startswith(prefix):
-			final_line = line;
-			break;
-	return final_line;
+def formatOptions(options):
+	if options != None:
+		assert(isinstance(options, dict))
+		options = defaultdict(lambda: None, options)
+	else:
+		options = defaultdict(lambda: None)
+	return options
 
 def readSampleLines_until_last_non_empty_line(file, timelimit=None):
 	all_lines = []
@@ -185,11 +187,7 @@ def get_time_from_final_sample_line_tokens(final_sample_line_tokens):
 
 
 def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
-	if options != None:
-		assert(isinstance(options, dict))
-		options = defaultdict(lambda: None, options)
-	else:
-		options = defaultdict(lambda: None)
+	options = formatOptions(options)
 	if "output" not in experiment_files_by_type_Dict:
 		return None;
 	data_summary = OrderedDict()
@@ -204,7 +202,8 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 		for i in range(1):
 
 			# Get First Line (Program Parameters) Tokens
-			line = readlines_until(output_file, "");
+			readLines = readLinesUntil(output_file, "");
+			line = readLines[CURR_LINE]
 			if line==None:
 				break;
 			program_parameters_line_tokens = strip_and_split(line);
@@ -285,11 +284,7 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 
 
 def summarizeDataForPlots(experiment_files_by_type_Dict, options=None, root=Path("")):
-	if options != None:
-		assert(isinstance(options, dict))
-		options = defaultdict(lambda: None, options)
-	else:
-		options = defaultdict(lambda: None)
+	options = formatOptions(options)
 	if "output" not in experiment_files_by_type_Dict:
 		return None;
 	data_summary = OrderedDict()
@@ -305,7 +300,8 @@ def summarizeDataForPlots(experiment_files_by_type_Dict, options=None, root=Path
 		for i in range(1):
 			
 			# Get First Line (Program Parameters) Tokens
-			line = readlines_until(output_file, "");
+			readLines = readLinesUntil(output_file, "");
+			line = readLines[CURR_LINE]
 			if line==None:
 				break;
 			program_parameters_line_tokens = strip_and_split(line);
@@ -389,3 +385,72 @@ def summarizeDataForPlots(experiment_files_by_type_Dict, options=None, root=Path
 				data_summary["error line " + str(i)] = line.strip();
 
 	return data_summary, parsedSampleLines;
+
+def summarizeProbeLogs(experiment_files_by_type_Dict, options=None, root=Path("")):
+	options = formatOptions(options)
+	if "stdout" not in experiment_files_by_type_Dict:
+		return None;
+	data_summary = OrderedDict()
+	output_file_Path = experiment_files_by_type_Dict["stdout"];
+	data_summary["stdout file path"] = str(output_file_Path.relative_to(root));
+
+
+	# extract probe log information from stdout
+	with output_file_Path.open('r') as fin:
+
+		# read in header
+		readLines = readLinesUntil(fin, _startswith="", _strip=True)
+		if readLines[NUM_LINES_READ_IN] != 0:
+			problem = Path(readLines[CURR_LINE].split()[1]).stem
+
+			nProbesReadIn = 0
+			nLevelsProcessed = 0
+			totalNumAbstractStates = 0
+			sumSingletonRatios = 0
+			sumVariancesBetweenSizeOfAbstractStates = 0
+			
+			numAbstractStates = 0
+			numSigletons = None
+			abstractStateSizes = None
+
+			while readLines[MATCH_FOUND]==True:
+				readLines = readLinesUntil(fin, _startswith=["Probe:", "Var:", "Abstract State:"], _strip=True)
+				if readLines[MATCH_FOUND]==False:
+					break;
+
+				# New probe case
+				if readLines[MATCH_IDX]==0:
+					nProbesReadIn += 1
+					probeNum = int(readLines[CURR_LINE].split()[1])
+					assert(probeNum == nProbesReadIn)
+
+				# New var
+				elif readLines[MATCH_IDX]==1:
+					# compile results from old var
+					if numAbstractStates != 0:
+						assert(numAbstractStates == len(abstractStateSizes))
+						totalNumAbstractStates += numAbstractStates
+						sumSingletonRatios += numSigletons/numAbstractStates
+						sumVariancesBetweenSizeOfAbstractStates += np.var(abstractStateSizes)
+						nLevelsProcessed += 1
+					# reset counters
+					numAbstractStates = 0
+					numSigletons = 0
+					abstractStateSizes = []
+
+				# Abstract state case
+				elif readLines[MATCH_IDX]==2:
+					# count number of nodes
+					readLines = readLinesUntil(fin, _startswith="Selected Representative:", _strip=True)
+					numNodes = readLines[NUM_LINES_READ_IN] - 1
+					assert(numNodes >= 1)
+					numAbstractStates += 1
+					if numNodes == 1:
+						numSigletons += 1
+					abstractStateSizes.append(numNodes)
+
+			data_summary["ave num abstract states"] = totalNumAbstractStates / nLevelsProcessed
+			data_summary["ave singleton ratio"] = sumSingletonRatios / nLevelsProcessed
+			data_summary["ave variance between size of abstract states"] = sumVariancesBetweenSizeOfAbstractStates / nLevelsProcessed
+
+	return data_summary
