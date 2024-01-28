@@ -6,6 +6,8 @@ from readlines import *
 import math
 import numpy as np
 
+INF = float("inf")
+NINF = float("-inf")
 
 def formatOptions(options):
 	if options != None:
@@ -58,7 +60,10 @@ def parseTimeFromSampleLine(line):
 	time = float(get_time_from_final_sample_line_tokens(line_tokens))
 	return time
 		
-def parseSampleLine(line, problemName=None, exactRefZVals=None, estRefZVals=None):
+def parseSampleLine(line, problemName=None, exactRefZVals=None, estRefZVals=None, log10MBEBound=None):
+	log10MBEBound = float(log10MBEBound)
+	lnMBEBound = log10MBEBound/math.log(math.exp(1),10)
+
 	parsedSampleLine = {}
 
 	line_tokens = strip_and_split(line);
@@ -69,12 +74,16 @@ def parseSampleLine(line, problemName=None, exactRefZVals=None, estRefZVals=None
 
 	Z_estimate_log10 = float(get_final_Z_estimate_from_final_sample_line_tokens(line_tokens));
 	parsedSampleLine["Z Estimate (log10)"] = Z_estimate_log10;
+	useMBEBoundAsEstimate = (Z_estimate_log10 == NINF and log10MBEBound != None and log10MBEBound != INF)
 
 	estZ_log10 = None
 	if estRefZVals and problemName in estRefZVals:
 		estZ_log10 = estRefZVals[problemName]
 		parsedSampleLine["Reference Z Value (log10)"] = estZ_log10;
-		log10_est_err = Z_estimate_log10 - estZ_log10
+		if useMBEBoundAsEstimate:
+			log10_est_err = log10MBEBound - estZ_log10
+		else:
+			log10_est_err = Z_estimate_log10 - estZ_log10
 		parsedSampleLine["Estimated Error (log10)"] = log10_est_err;
 		parsedSampleLine["Estimated Absolute Error (log10)"] = abs(log10_est_err);
 	else:
@@ -86,7 +95,10 @@ def parseSampleLine(line, problemName=None, exactRefZVals=None, estRefZVals=None
 	if exactRefZVals and problemName in exactRefZVals:
 		exactZ_log10 = exactRefZVals[problemName]
 		parsedSampleLine["Exact Z Value (log10)"] = exactZ_log10;
-		log10_err = Z_estimate_log10 - exactZ_log10
+		if useMBEBoundAsEstimate:
+			log10_err = log10MBEBound - exactZ_log10
+		else:
+			log10_err = Z_estimate_log10 - exactZ_log10
 		parsedSampleLine["Error (log10)"] = log10_err;
 		parsedSampleLine["Absolute Error (log10)"] = abs(log10_err);
 		parsedSampleLine["Reference Z Value (log10)"] = exactZ_log10;
@@ -103,7 +115,10 @@ def parseSampleLine(line, problemName=None, exactRefZVals=None, estRefZVals=None
 	if estRefZVals and problemName in estRefZVals:
 		estZ_ln = estZ_log10/math.log(math.exp(1),10);
 		parsedSampleLine["Reference Z Value (ln)"] = estZ_ln;
-		ln_est_err = Z_estimate_ln - estZ_ln
+		if useMBEBoundAsEstimate:
+			ln_est_err = lnMBEBound - estZ_ln
+		else:
+			ln_est_err = Z_estimate_ln - estZ_ln
 		parsedSampleLine["Estimated Error (ln)"] = ln_est_err;
 		parsedSampleLine["Estimated Absolute Error (ln)"] = abs(ln_est_err);
 	else:
@@ -114,7 +129,10 @@ def parseSampleLine(line, problemName=None, exactRefZVals=None, estRefZVals=None
 	if exactRefZVals and problemName in exactRefZVals:
 		exactZ_ln = exactZ_log10/math.log(math.exp(1),10);
 		parsedSampleLine["Exact Z Value (ln)"] = exactZ_ln;
-		ln_err = Z_estimate_ln - exactZ_ln
+		if useMBEBoundAsEstimate:
+			ln_err = lnMBEBound - exactZ_ln
+		else:
+			ln_err = Z_estimate_ln - exactZ_ln
 		parsedSampleLine["Error (ln)"] = ln_err;
 		parsedSampleLine["Absolute Error (ln)"] = abs(ln_err);
 		parsedSampleLine["Reference Z Value (ln)"] = exactZ_ln;
