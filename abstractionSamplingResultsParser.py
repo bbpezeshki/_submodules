@@ -266,7 +266,12 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 			# estRefZVals = referenceZValuesLoader.loadReferenceZValues(refZValCSVFile="/home/bbpezeshki/VSCode/haplo1/ProblemDomains/TaskBased/Z/estimatedZvalues_byAverage.csv")
 
 			# Parse Sample Lines
-			parsedFinalSampleLine = parseSampleLine(final_sample_line, problemName, options["exactRefZVals"], options["estRefZVals"])
+			parsedFinalSampleLine = parseSampleLine(
+				final_sample_line, 
+				problemName=problemName, 
+				exactRefZVals=options["exactRefZVals"], 
+				estRefZVals=options["estRefZVals"],
+				log10MBEBound=mbe_log_bound)
 			data_summary["Number of Samples"] = parsedFinalSampleLine["Number of Samples"];
 
 			data_summary["Z Estimate (log10)"] = parsedFinalSampleLine["Z Estimate (log10)"];
@@ -368,7 +373,12 @@ def summarizeDataForPlots(experiment_files_by_type_Dict, options=None, root=Path
 			parsedSampleLines = []
 			for line in all_sample_lines:
 				sampleSummary = {}
-				parsedSampleLine = parseSampleLine(line, problemName, options["exactRefZVals"], options["estRefZVals"])
+				parsedFinalSampleLine = parseSampleLine(
+					line, 
+					problemName=problemName, 
+					exactRefZVals=options["exactRefZVals"], 
+					estRefZVals=options["estRefZVals"],
+					log10MBEBound=mbe_log_bound)
 				parsedSampleLines.append(parsedSampleLine)
 
 			parsedFinalSampleLine = parsedSampleLines[-1]
