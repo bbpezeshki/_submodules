@@ -206,6 +206,8 @@ def get_time_from_final_sample_line_tokens(final_sample_line_tokens):
 
 def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 	options = formatOptions(options)
+	exactRefZVals = options["exactRefZVals"]
+	estRefZVals = options["estRefZVals"]
 	if "output" not in experiment_files_by_type_Dict:
 		return None;
 	data_summary = OrderedDict()
@@ -259,6 +261,43 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 			# Read until final non-empty line that returns before time-limit
 			final_sample_line = read_last_sample_line(output_file, timelimit=options["timelimit"]);
 			if not final_sample_line:
+				log10MBEBound = float(mbe_log_bound)
+				estZ_log10 = None
+				if estRefZVals and problemName in estRefZVals:
+					estZ_log10 = estRefZVals[problemName]
+					data_summary["Reference Z Value (log10)"] = estZ_log10;
+					log10_est_err = log10MBEBound - estZ_log10
+					data_summary["Estimated Error (log10)"] = log10_est_err;
+					data_summary["Estimated Absolute Error (log10)"] = abs(log10_est_err);
+
+				exactZ_log10 = None
+				if exactRefZVals and problemName in exactRefZVals:
+					exactZ_log10 = exactRefZVals[problemName]
+					data_summary["Exact Z Value (log10)"] = exactZ_log10;
+					log10_err = log10MBEBound - exactZ_log10
+					data_summary["Error (log10)"] = log10_err;
+					data_summary["Absolute Error (log10)"] = abs(log10_err);
+					data_summary["Reference Z Value (log10)"] = exactZ_log10;
+					data_summary["Estimated Error (log10)"] = log10_err;
+					data_summary["Estimated Absolute Error (log10)"] = abs(log10_err);
+
+				if estRefZVals and problemName in estRefZVals:
+					estZ_ln = estZ_log10/math.log(math.exp(1),10);
+					data_summary["Reference Z Value (ln)"] = estZ_ln;
+					ln_est_err = lnMBEBound - estZ_ln
+					data_summary["Estimated Error (ln)"] = ln_est_err;
+					data_summary["Estimated Absolute Error (ln)"] = abs(ln_est_err);
+
+				if exactRefZVals and problemName in exactRefZVals:
+					exactZ_ln = exactZ_log10/math.log(math.exp(1),10);
+					data_summary["Exact Z Value (ln)"] = exactZ_ln;
+					ln_err = lnMBEBound - exactZ_ln
+					data_summary["Error (ln)"] = ln_err;
+					data_summary["Absolute Error (ln)"] = abs(ln_err);
+					data_summary["Reference Z Value (ln)"] = exactZ_ln;
+					data_summary["Estimated Error (ln)"] = ln_err;
+					data_summary["Estimated Absolute Error (ln)"] = exactZ_ln;
+
 				break;
 
 			# # Final Z Estimate vs Reference
@@ -269,8 +308,8 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 			parsedFinalSampleLine = parseSampleLine(
 				final_sample_line, 
 				problemName=problemName, 
-				exactRefZVals=options["exactRefZVals"], 
-				estRefZVals=options["estRefZVals"],
+				exactRefZVals=exactRefZVals, 
+				estRefZVals=estRefZVals,
 				log10MBEBound=mbe_log_bound)
 			data_summary["Number of Samples"] = parsedFinalSampleLine["Number of Samples"];
 
@@ -293,6 +332,7 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 			data_summary["Average Number of Nodes Created Per Probe"] = parsedFinalSampleLine["Average Number of Nodes Created Per Probe"];
 
 			data_summary["Time"] = parsedFinalSampleLine["Time"];
+
 
 
 	# extract information from stderr
