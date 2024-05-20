@@ -55,6 +55,9 @@ def strip_and_split(line, split_on=None):
 		tokens = line.split();
 	return tokens;
 
+def extractTimelimitFromOutputFilePath(outfilepath):
+	return int(outfilepath.split("-t-")[-1].split("-")[0].split(".")[0])
+	
 def parseTimeFromSampleLine(line):
 	line_tokens = strip_and_split(line);
 	time = float(get_time_from_final_sample_line_tokens(line_tokens))
@@ -259,9 +262,18 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 
 
 			# Read until final non-empty line that returns before time-limit
-			final_sample_line = read_last_sample_line(output_file, timelimit=options["timelimit"]);
+			try:
+				timelimit = extractTimelimitFromOutputFilePath(data_summary["output file path"])
+			except:
+				timelimit = timelimit = options["timelimit"]
+			data_summary["Time Limit"] = timelimit
+
+			final_sample_line = read_last_sample_line(output_file, timelimit=timelimit);
+
 			if not final_sample_line:
 				log10MBEBound = float(mbe_log_bound)
+				lnMBEBound = log10MBEBound/math.log(math.exp(1),10);
+
 				estZ_log10 = None
 				if estRefZVals and problemName in estRefZVals:
 					estZ_log10 = estRefZVals[problemName]
@@ -399,9 +411,55 @@ def summarizeDataForPlots(experiment_files_by_type_Dict, options=None, root=Path
 			data_summary["Preprocessing Time"] = preprocessing_time;
 
 
-			# Read until final non-empty line
-			all_sample_lines = readSampleLines_until_last_non_empty_line(output_file, timelimit=options["timelimit"]);
+			# Read until final non-empty line that does not excede timelimit
+			try:
+				timelimit = extractTimelimitFromOutputFilePath(data_summary["output file path"])
+			except:
+				timelimit = timelimit = options["timelimit"]
+			data_summary["Time Limit"] = timelimit
+				
+			all_sample_lines = readSampleLines_until_last_non_empty_line(output_file, timelimit=timelimit);
+
 			if not all_sample_lines:
+				log10MBEBound = float(mbe_log_bound)
+				lnMBEBound = log10MBEBound/math.log(math.exp(1),10);
+				
+				estZ_log10 = None
+				if estRefZVals and problemName in estRefZVals:
+					estZ_log10 = estRefZVals[problemName]
+					data_summary["Reference Z Value (log10)"] = estZ_log10;
+					log10_est_err = log10MBEBound - estZ_log10
+					data_summary["Estimated Error (log10)"] = log10_est_err;
+					data_summary["Estimated Absolute Error (log10)"] = abs(log10_est_err);
+
+				exactZ_log10 = None
+				if exactRefZVals and problemName in exactRefZVals:
+					exactZ_log10 = exactRefZVals[problemName]
+					data_summary["Exact Z Value (log10)"] = exactZ_log10;
+					log10_err = log10MBEBound - exactZ_log10
+					data_summary["Error (log10)"] = log10_err;
+					data_summary["Absolute Error (log10)"] = abs(log10_err);
+					data_summary["Reference Z Value (log10)"] = exactZ_log10;
+					data_summary["Estimated Error (log10)"] = log10_err;
+					data_summary["Estimated Absolute Error (log10)"] = abs(log10_err);
+
+				if estRefZVals and problemName in estRefZVals:
+					estZ_ln = estZ_log10/math.log(math.exp(1),10);
+					data_summary["Reference Z Value (ln)"] = estZ_ln;
+					ln_est_err = lnMBEBound - estZ_ln
+					data_summary["Estimated Error (ln)"] = ln_est_err;
+					data_summary["Estimated Absolute Error (ln)"] = abs(ln_est_err);
+
+				if exactRefZVals and problemName in exactRefZVals:
+					exactZ_ln = exactZ_log10/math.log(math.exp(1),10);
+					data_summary["Exact Z Value (ln)"] = exactZ_ln;
+					ln_err = lnMBEBound - exactZ_ln
+					data_summary["Error (ln)"] = ln_err;
+					data_summary["Absolute Error (ln)"] = abs(ln_err);
+					data_summary["Reference Z Value (ln)"] = exactZ_ln;
+					data_summary["Estimated Error (ln)"] = ln_err;
+					data_summary["Estimated Absolute Error (ln)"] = exactZ_ln;
+
 				break;
 			# print(all_sample_lines)
 
@@ -413,7 +471,7 @@ def summarizeDataForPlots(experiment_files_by_type_Dict, options=None, root=Path
 			parsedSampleLines = []
 			for line in all_sample_lines:
 				sampleSummary = {}
-				parsedFinalSampleLine = parseSampleLine(
+				parsedSampleLine = parseSampleLine(
 					line, 
 					problemName=problemName, 
 					exactRefZVals=options["exactRefZVals"], 
