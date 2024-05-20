@@ -1,10 +1,13 @@
 import io
 from pathlib import Path
+from collections import defaultdict
+from copy import deepcopy
 
 def uaiFileTypes():
     res = set(['.uai','.evid','.query','.sum','.elim', '.ord','.map'])
     return res
 
+# fin, needToCloseFile = initiateInputStream(f)
 def initiateInputStream(f):
     fin = None;
     needToCloseFile = False;
@@ -13,8 +16,10 @@ def initiateInputStream(f):
     else:
         p = Path(f)
         fin = p.open('r')
+        needToCloseFile = True
     return fin, needToCloseFile
 
+# fout, needToCloseFile = initiateInputStream(f)
 def initiateOutputStream(f):
     fout = None;
     needToCloseFile = False;
@@ -23,6 +28,7 @@ def initiateOutputStream(f):
     else:
         p = Path(f)
         fout = p.open('w')
+        needToCloseFile = True
     return fout, needToCloseFile
 
 def fullTableSizeFromDomains(f, uaiModel):
@@ -31,12 +37,14 @@ def fullTableSizeFromDomains(f, uaiModel):
         ntuples *= uaiModel["domainSizes"][v]
     return ntuples;
 
-def readTokens(f):
+def readTokens(f, accepted_non_lnum=set()):
     fin, needToCloseFile = initiateInputStream(f)
     tokens = []
     for line in fin:
         sline = line.strip()
-        if not sline or not sline[0].isalnum():
+        if not sline:
+            continue;
+        if not sline[0].isalnum() and sline[0] not in accepted_non_lnum:
             continue;
         tokens += sline.split()
     if needToCloseFile:
@@ -119,7 +127,7 @@ def removeConstantFxn(model, onlyIfOne=True):
     return constantFxnFound
 
 
-def printUaiModel(f, model):
+def writeUaiModel(f, model):
 
     fout, needToCloseFile = initiateOutputStream(f)
 
@@ -149,6 +157,7 @@ def readElim(elim_f, uai=None):
     elim = {
                     "nvars"         :   None,
                     "vars"          :   None,
+                    "order"         :   None,
                }
 
     elimTokens = readTokens(elim_f)
@@ -158,12 +167,15 @@ def readElim(elim_f, uai=None):
     assert(elim["nvars"] >= 0), str(elim_f)
     assert(elim["nvars"] == len(elimTokens)-1), str(elim_f)
     elim["vars"] = set()
+    elim["order"] = []
     for i in range(elim["nvars"]):
         var = int(elimTokens[idx])
         idx += 1
         assert(var not in  elim["vars"]), str(elim_f)
         elim["vars"].add(var)
+        elim["order"].append(var)
     assert(idx == len(elimTokens)), str(elim_f)
+    assert(len(elim["order"])==len(set(elim["order"])))
     
     if uai != None:
         uaiModel = None
@@ -177,6 +189,44 @@ def readElim(elim_f, uai=None):
 
     return elim
 
+
+def reverseOrder(order_input, uai=None, inPlace=False):
+    order = None
+    filename = None
+    if type(order_input) == dict:
+        order = order_input
+        if not inPlace:
+            order = deepcopy(order)
+        assert(all(x in order_input for x in ["nvars", "vars", "order"]))
+        assert(len(order["order"])==len(set(order["order"])))
+        if uai != None:
+            uaiModel = None
+            if isinstance(uai, dict):
+                uaiModel = uai;
+            else:
+                uaiModel = readUaiModel(uai)
+            uaiVars = set(range(uaiModel["nvars"]))
+            for v in order_input["vars"]:
+                assert(v in uaiVars), str(order_input)
+    else:
+        assert(type(order_input) == str or type(order_input) == Path)
+        order = readElim(order_input, uai=uai)
+    oldFirst = order["order"][0]
+    order["order"].reverse()
+    assert(oldFirst == order["order"][-1])
+    
+    return order
+
+
+
+def writeOrder(f, order):
+    fout, needToCloseFile = initiateOutputStream(f)
+    print(order["nvars"], file=fout)
+    print(*order["order"], file=fout)
+    if needToCloseFile:
+        fout.close()
+
+    
 
 def readEvid(evid_f, uai=None):
     evid = {
@@ -414,7 +464,74 @@ def truncateMAPtoMMAP(map_output_file, mmap_query_file, new_truncated_map_file):
 
     
 
+# def extractNextBifComponent(tokens):
+#     component = {
+#         "type" : None,
+#         "name" : None,
+#         "data" : None,
+#     }
+#     idx = 0
+#     subTokens = token[0].split()
+#     assert(len(subTokens)==3 and subTokens[2] == "{")
+#     component["type"] = subTokens[0]
+#     component["name"] = subTokens[1]
+#     data = []
+#     idx +=1
+#     while tokens[idx] != "}":
+#         data.append(tokens[idx])
+#         idx += 1
+
+#     return tokens[idx+1:], component
+
+
+# def extractBifComponents(f):
+#     bif_components = defaultdict(list)
+#     tokens = readTokens(f, accepted_non_lnum={"}"})
+#     while len(tokens) != 0:
+#         tokens, component = extractNextBifComponent(tokens)
+#         bif_component[component["type"]].append(component)
+
+#     return bif_components
+
+
+# def extractBifVariables(bif_components):
+#     for component in bif_components["variable"]
+#         variable = {
+#             "name" : None,
+#             "type" : None,
+#             "ds_to_di" : None,
+#         }
+#         assert(component["type"]=="variable")
+#         assert(len(component["data"])==1)
+#         assert(component["data"][0][-1]==";") #type discrete [ 3 ] { LOW, NORMAL, HIGH };
+#         variable["name"] = component["name"]
+#         tokens = component["data"][0].split()
+#         assert(tokens[0]=="type")
+#         variable["type"] = tokens[1]
+#         assert(tokens[2]=="[" and tokens[4]=="]")
+#         dsize = int(tokens[3])
+#         assert(tokens[5]=="{" and tokens[6+dsize]=="};")
+#         dtokens = tokens[5+1:6+dsize]
+#         ds_to_di = {}
+#         for di,ds enumerate(dtokens):
+#             ds_to_di[ds.replace(",","")] = di
+
+
+# def convertBifToUai(f):
+#     uaiModel = {
+#                     "type"          :   None,
+#                     "nvars"         :   None,
+#                     "domainSizes"   :   None,
+#                     "nfxns"         :   None,
+#                     "scopes"        :   None,
+#                     "fxntbls"       :   None,
+#                }
+
+#     bif_components = extractBifComponents(f)
+
     
+    
+
     
     
 
