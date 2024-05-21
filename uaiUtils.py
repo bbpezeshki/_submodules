@@ -462,6 +462,18 @@ def truncateMAPtoMMAP(map_output_file, mmap_query_file, new_truncated_map_file):
             print(i, map_assignment_tuples[i], sep=" ", end=" ", file=fout)
         print(file=fout)
 
+
+
+def rewriteElimForAS(elim_f):
+    oldFile = Path(elim_f)
+    order = readElim(oldFile)
+    oldFile.unlink()
+    outfile = Path(elim_f).with_suffix(".elim")
+    with outfile.open('w') as fout:
+        print('#', file=fout)
+        print(order["nvars"], file=fout)
+        print(*order['order'], sep='\n',file=fout)
+
     
 
 # def extractNextBifComponent(tokens):
