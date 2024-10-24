@@ -148,3 +148,11 @@ def readLinesUntil(_fin, _startswith=None, _endswith=None, _equals=None, _contai
             prevLine = prevLine.strip()
     
     return prevLine, currLine, matchFound, matchType, matchIdx, numLinesReadIn
+
+# PREV_LINE           = 0
+# CURR_LINE           = 1
+# EXTRACTED_LINE      = 1
+# MATCH_FOUND         = 2
+# MATCH_TYPE          = 3
+# MATCH_IDX           = 4
+# NUM_LINES_READ_IN   = 5
