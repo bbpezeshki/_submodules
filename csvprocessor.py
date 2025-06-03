@@ -1,17 +1,27 @@
 from pathlib import Path
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from datetime import datetime
 import csv
 
-parser = ArgumentParser()
-parser.add_argument("--csvFile", required=True, help="csvFiles to process")
-parser.add_argument("--columns-to-keep", default=None, nargs="+", help="csv columns to keep")
-parser.add_argument("--columns-to-delete", default=None, nargs="+", help="csv columns to remove")
-parser.add_argument("--column-renamings", default=[], nargs="+", help='syntax: "time: 20sec" "20sec" "time: 30sec" "30sec"')
+# parser = ArgumentParser()
+# parser.add_argument("--csvFile", required=True, help="csvFiles to process")
+# parser.add_argument("--columns-to-keep", default=None, nargs="+", help="csv columns to keep")
+# parser.add_argument("--columns-to-delete", default=None, nargs="+", help="csv columns to remove")
+# parser.add_argument("--column-renamings", default=[], nargs="+", help='syntax: "time: 20sec" "20sec" "time: 30sec" "30sec"')
 
+# args = parser.parse_args()
 
-def processCsv(parser, write=True):
-    args = parser.parse_args()
+def processCsv(args, write=True):
+
+    if type(args) == dict:
+        args = Namespace(**args)
+
+    if not hasattr(args, 'columns_to_keep'):
+        args.columns_to_keep = None
+    if not hasattr(args, 'columns_to_delete'):
+        args.columns_to_delete = None
+    if not hasattr(args, 'column_renamings'):
+        args.column_renamings = []
 
     csvFile = Path(args.csvFile)
     csvRows = None
@@ -66,14 +76,27 @@ def processCsv(parser, write=True):
 
     return csvRows, columnsToKeepList, columnsToKeepSet, csvFile, args
 
-def writeCsv(csvFile, csvRows, columnsToKeepList): #csvFile is the original csvFile Path()
+def writeCsv(csvFile, csvRows, columnsToKeepList, indicateProcessed=True): #csvFile is the original csvFile Path()
+    csvFile = Path(csvFile)
     current_time = datetime.now()
-    newCsvFilename = csvFile.stem + "__processed-" + current_time.strftime("%Y-%m-%d-%H%M") + csvFile.suffix
-    newCsvFile = Path(newCsvFilename)
+    if indicateProcessed==True:
+        newCsvFilename = csvFile.stem + "__processed-" + current_time.strftime("%Y-%m-%d-%H%M") + csvFile.suffix
+        newCsvFile = Path(newCsvFilename)
+    else:
+        newCsvFile = csvFile
     with newCsvFile.open('w') as fout:
         csvDictWriter = csv.DictWriter(fout, fieldnames=columnsToKeepList, extrasaction="ignore")
         csvDictWriter.writeheader()
         csvDictWriter.writerows(csvRows)
 
 if __name__ == "__main__":
-    processCsv(parser)
+
+    parser = ArgumentParser()
+    parser.add_argument("--csvFile", required=True, help="csvFiles to process")
+    parser.add_argument("--columns-to-keep", default=None, nargs="+", help="csv columns to keep")
+    parser.add_argument("--columns-to-delete", default=None, nargs="+", help="csv columns to remove")
+    parser.add_argument("--column-renamings", default=[], nargs="+", help='syntax: "time: 20sec" "20sec" "time: 30sec" "30sec"')
+
+    args = parser.parse_args()
+    
+    processCsv(args)
