@@ -21,4 +21,5 @@ def loadMBELog10Bounds(mbeLog10BoundsFile=None):
     return MBELog10Bounds
 
 
-    
+if __name__ == "__main__":
+    print(loadMBELog10Bounds())
