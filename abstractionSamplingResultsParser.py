@@ -220,7 +220,8 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 		stderr_file_Path = experiment_files_by_type_Dict["stderr"];
 
 	# extract information from stdout
-	data_summary["output file path"] = str(output_file_Path.relative_to(root));
+	# data_summary["output file path"] = str(output_file_Path.relative_to(root));
+	data_summary["output file path"] = str(output_file_Path.absolute());
 	with output_file_Path.open('r') as output_file:
 		for i in range(1):
 
@@ -265,7 +266,7 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 			try:
 				timelimit = extractTimelimitFromOutputFilePath(data_summary["output file path"])
 			except:
-				timelimit = timelimit = options["timelimit"]
+				timelimit = options["timelimit"]
 			data_summary["Time Limit"] = timelimit
 
 			final_sample_line = read_last_sample_line(output_file, timelimit=timelimit);
@@ -349,7 +350,8 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 
 	# extract information from stderr
 	if stderr_file_Path != None:
-		data_summary["stderr file path"] = str(stderr_file_Path.relative_to(root));
+		# data_summary["stderr file path"] = str(stderr_file_Path.relative_to(root));
+		data_summary["stderr file path"] = str(stderr_file_Path.absolute());
 		with stderr_file_Path.open('r') as stderr_file:
 			for i, line in enumerate(stderr_file):
 				data_summary["error line " + str(i)] = line.strip();
