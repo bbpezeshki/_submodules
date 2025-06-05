@@ -29,9 +29,9 @@ def strip_and_split(line, split_on=None):
 def process_stdout_problemName_line(line):
 	stripped_line = line.strip()
 
-	stripped_line = stripped_line.rstrip(".PR")
-	stripped_line = stripped_line.rstrip(".MAR")
-	stripped_line = stripped_line.rstrip(".uai")
+	stripped_line = stripped_line.removesuffix(".PR")
+	stripped_line = stripped_line.removesuffix(".MAR")
+	stripped_line = stripped_line.removesuffix(".uai")
 
 	problemName = stripped_line
 
@@ -39,10 +39,10 @@ def process_stdout_problemName_line(line):
 
 
 def process_stdout_totalTime_line(line):
-	task_line_tokens = strip_and_split(line, split_on="=")
-	assert(task_line_tokens[0] == "Total time")
+	totalTime_line_tokens = strip_and_split(line, split_on="=")
+	assert(totalTime_line_tokens[0] == "Total time")
 	
-	totalTime = int(task_line_tokens[1]);
+	totalTime = int(totalTime_line_tokens[1]);
 
 	return totalTime;
 
@@ -148,7 +148,8 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 
 
 	# extract informatino from stdout
-	data_summary["stdout file path"] = str(stdout_file_Path.relative_to(root));
+	# data_summary["stdout file path"] = str(stdout_file_Path.relative_to(root));
+	data_summary["stdout file path"] = str(stdout_file_Path.absolute());
 	with stdout_file_Path.open('r') as stdout_fin:
 		for i in range(1):
 
@@ -159,6 +160,7 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 			if problem == None:
 				break;
 			data_summary["Problem"] = problem
+			data_summary["Algorithm"] = "IJGP-SS"
 
 			# Extract Total Time
 			readLines = readLinesUntil(stdout_fin, _startswith=["Total time ="], _strip=True)
@@ -216,10 +218,9 @@ def summarizeData(experiment_files_by_type_Dict, options=None, root=Path("")):
 				update_data_summary_with_z_estimate_and_error(problemName, log10_Zhat, data_summary, exactRefZVals, estRefZVals)
 
 	if len(configs_without_MBELogBounds) > 0:
-		print('PROBLEM/i-BOUND CONFIGURATIONS WITHOUT A PRE-STORED MBE LOG10 BOUND:')
+		print('NO PRE-STORED MBE LOG10 BOUND:', end="")
 		for config in configs_without_MBELogBounds:
 			print('\t',config)
-		print('(IJGP-SS data extraction will use "nan" for the MBE log10 Bound for these instances)')
 
 	return data_summary;
 
